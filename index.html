@@ -1,0 +1,554 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>What-If Business Simulator</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=Fraunces:opsz,wght@9..144,600;9..144,800&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+:root{
+  --paper:#fbf6ec; --ink:#1d1a2f; --mute:#6c6680; --line:#e6dccb; --card:#fffdf8;
+  --tang:#ff6b35; --berry:#d6246e; --teal:#0fa3a3; --sun:#f7b32b; --grape:#6a4cff; --leaf:#2bb673;
+  --bad:#e23d3d; --shadow:4px 4px 0 var(--ink);
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --paper:#17142a; --ink:#f4efe4; --mute:#a8a1c0; --line:#322c4d; --card:#211d38; --shadow:4px 4px 0 #000;
+}}
+:root[data-theme="dark"]{--paper:#17142a; --ink:#f4efe4; --mute:#a8a1c0; --line:#322c4d; --card:#211d38; --shadow:4px 4px 0 #000;}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--paper);color:var(--ink);font:15px/1.5 "Space Grotesk",system-ui,sans-serif;
+  background-image:radial-gradient(var(--line) 1px,transparent 1px);background-size:22px 22px}
+.mono{font-family:"JetBrains Mono",monospace}
+h1,h2,h3{font-family:Fraunces,serif;letter-spacing:-.01em}
+.wrap{max-width:1320px;margin:0 auto;padding:0 16px}
+/* masthead */
+header{padding:28px 0 18px;display:flex;gap:20px;align-items:flex-end;justify-content:space-between;flex-wrap:wrap}
+.brand small{display:inline-block;background:var(--ink);color:var(--paper);padding:3px 10px;border-radius:99px;font-size:12px;letter-spacing:.08em;text-transform:uppercase}
+.brand h1{font-size:clamp(30px,5vw,54px);line-height:1;margin-top:10px;font-weight:800}
+.brand h1 em{font-style:normal;background:linear-gradient(90deg,var(--tang),var(--berry),var(--grape));-webkit-background-clip:text;background-clip:text;color:transparent}
+.brand p{color:var(--mute);max-width:620px;margin-top:8px}
+.hdr-actions{display:flex;gap:8px}
+button{font:inherit;cursor:pointer}
+.btn{border:2px solid var(--ink);background:var(--card);color:var(--ink);padding:8px 14px;border-radius:10px;font-weight:700;box-shadow:var(--shadow);transition:transform .12s,box-shadow .12s}
+.btn:hover{transform:translate(-2px,-2px);box-shadow:6px 6px 0 var(--ink)}
+.btn:active{transform:translate(2px,2px);box-shadow:1px 1px 0 var(--ink)}
+.btn.hot{background:var(--sun);color:#1d1a2f}
+/* question ribbon */
+.ribbon{border:2px solid var(--ink);border-radius:16px;background:var(--ink);color:var(--paper);padding:14px 18px;display:flex;gap:14px;align-items:center;flex-wrap:wrap;box-shadow:var(--shadow)}
+.ribbon b{font-family:Fraunces,serif;font-size:20px}
+.ribbon .q{flex:1;min-width:240px}
+.verdict{padding:6px 14px;border-radius:99px;font-weight:700;font-size:14px;white-space:nowrap}
+/* scenario tape */
+.tape{display:flex;gap:12px;overflow-x:auto;padding:18px 2px 8px;scroll-snap-type:x mandatory}
+.preset{scroll-snap-align:start;flex:0 0 210px;border:2px solid var(--ink);border-radius:14px;padding:12px 14px;background:var(--card);text-align:left;color:var(--ink);box-shadow:var(--shadow);transition:transform .15s}
+.preset:hover{transform:rotate(-1deg) translateY(-3px)}
+.preset.on{outline:3px solid var(--tang);outline-offset:3px}
+.preset .tag{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;padding:2px 8px;border-radius:6px;color:#fff}
+.preset h4{font-family:Fraunces,serif;font-size:17px;margin:8px 0 2px}
+.preset p{font-size:12.5px;color:var(--mute)}
+/* layout: bench */
+.bench{display:grid;grid-template-columns:330px 1fr;gap:18px;margin-top:14px}
+@media(max-width:980px){.bench{grid-template-columns:1fr}}
+.panel{border:2px solid var(--ink);border-radius:18px;background:var(--card);box-shadow:var(--shadow);padding:16px}
+.panel h3{font-size:19px;display:flex;align-items:center;gap:8px}
+.panel .sub{color:var(--mute);font-size:13px;margin:2px 0 12px}
+/* knob */
+.knob-box{display:flex;flex-direction:column;align-items:center;padding:4px 0 10px;border-bottom:2px dashed var(--line);margin-bottom:12px}
+#knob{width:200px;height:200px;cursor:grab;touch-action:none;user-select:none}
+#knob:active{cursor:grabbing}
+.knob-hint{font-size:12px;color:var(--mute)}
+/* levers */
+.lever-group{margin-bottom:12px}
+.lever-group > .gname{font-size:11px;letter-spacing:.1em;text-transform:uppercase;font-weight:700;margin:10px 0 6px;display:flex;align-items:center;gap:6px}
+.dot{width:10px;height:10px;border-radius:3px;display:inline-block}
+.lever{margin:8px 0}
+.lever label{display:flex;justify-content:space-between;font-size:13.5px;font-weight:500}
+.lever label span{font-family:"JetBrains Mono",monospace;font-size:12.5px;background:var(--paper);border:1px solid var(--line);padding:0 6px;border-radius:6px}
+input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:8px;border-radius:99px;background:var(--line);margin-top:6px;accent-color:var(--grape)}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;height:20px;border-radius:6px;background:var(--c,var(--grape));border:2px solid var(--ink);cursor:pointer}
+input[type=range]::-moz-range-thumb{width:18px;height:18px;border-radius:6px;background:var(--c,var(--grape));border:2px solid var(--ink)}
+.seg{display:flex;border:2px solid var(--ink);border-radius:10px;overflow:hidden;margin-top:6px}
+.seg button{flex:1;border:0;background:transparent;color:var(--ink);padding:6px 0;font-weight:700;font-size:13px}
+.seg button+button{border-left:2px solid var(--ink)}
+.seg button.on{background:var(--teal);color:#fff}
+/* right side */
+.stage{display:flex;flex-direction:column;gap:18px;min-width:0}
+.kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+@media(max-width:760px){.kpis{grid-template-columns:repeat(2,1fr)}}
+.kpi{border:2px solid var(--ink);border-radius:14px;padding:12px 14px;background:var(--card);position:relative;overflow:hidden}
+.kpi::before{content:"";position:absolute;inset:0 auto 0 0;width:6px;background:var(--k)}
+.kpi .l{font-size:12px;color:var(--mute);text-transform:uppercase;letter-spacing:.06em;font-weight:700}
+.kpi .v{font-family:Fraunces,serif;font-size:28px;font-weight:800;line-height:1.1;margin-top:4px}
+.kpi .d{font-size:12.5px;font-family:"JetBrains Mono",monospace}
+.up{color:var(--leaf)} .down{color:var(--bad)}
+/* pipeline */
+.pipe-wrap{overflow-x:auto}
+#pipe{width:100%;min-width:640px;height:auto;display:block}
+.pipe-legend{display:flex;gap:14px;flex-wrap:wrap;font-size:12.5px;color:var(--mute);margin-top:6px}
+.pipe-stage{cursor:pointer}
+.pipe-stage:hover .pbody{filter:brightness(1.08)}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
+.alarm{animation:pulse 1s infinite}
+@keyframes flow{to{stroke-dashoffset:-40}}
+.flowline{stroke-dasharray:6 14;animation:flow 1.2s linear infinite}
+/* grid of charts */
+.two{display:grid;grid-template-columns:1.5fr 1fr;gap:18px}
+@media(max-width:1100px){.two{grid-template-columns:1fr}}
+.chart-box{position:relative;height:290px}
+.tabs{display:flex;gap:6px;flex-wrap:wrap;margin:6px 0 10px}
+.tabs button{border:2px solid var(--ink);border-radius:99px;background:transparent;color:var(--ink);padding:3px 12px;font-size:12.5px;font-weight:700}
+.tabs button.on{background:var(--ink);color:var(--paper)}
+/* advisor */
+.advisor{display:grid;grid-template-columns:auto 1fr;gap:14px;align-items:start}
+.bot{width:54px;height:54px;border-radius:16px;border:2px solid var(--ink);background:linear-gradient(135deg,var(--grape),var(--berry));display:grid;place-items:center;color:#fff;font-size:26px}
+.msgs{display:flex;flex-direction:column;gap:8px}
+.msg{border:2px solid var(--ink);border-radius:4px 14px 14px 14px;padding:10px 12px;background:var(--paper);font-size:14px}
+.msg b{font-weight:700}
+.msg .pill{display:inline-block;font-size:11px;font-weight:700;padding:1px 8px;border-radius:99px;color:#fff;margin-right:6px;vertical-align:1px}
+/* compare drawer */
+table{width:100%;border-collapse:collapse;font-size:13.5px}
+th,td{padding:8px 10px;border-bottom:1px solid var(--line);text-align:right;white-space:nowrap}
+th:first-child,td:first-child{text-align:left}
+th{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--mute)}
+.tbl-wrap{overflow-x:auto}
+.x{border:0;background:none;color:var(--mute);font-size:16px}
+.empty{color:var(--mute);font-size:13.5px;padding:10px 0}
+/* tooltip for pipe */
+#tip{position:fixed;pointer-events:none;background:var(--ink);color:var(--paper);padding:8px 10px;border-radius:10px;font-size:12.5px;opacity:0;transition:opacity .12s;max-width:240px;z-index:9}
+footer{color:var(--mute);font-size:12.5px;text-align:center;padding:30px 0 40px}
+.modal{position:fixed;inset:0;background:rgba(20,16,40,.55);display:none;place-items:center;z-index:10;padding:16px}
+.modal.show{display:grid}
+.modal .panel{max-width:560px;width:100%}
+.modal ol{padding-left:20px;margin-top:8px}
+.modal li{margin:6px 0}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+  <div class="brand">
+    <small>Scenario Lab · AI What-If Engine</small>
+    <h1>Can we really grow <em id="hdrPct">+20%</em>?</h1>
+    <p>Turn the dial to set a sales target, pull the levers, and watch where workforce, inventory, production and logistics break first. Every number updates live.</p>
+  </div>
+  <div class="hdr-actions">
+    <button class="btn" id="howBtn">How it works</button>
+    <button class="btn" id="themeBtn" aria-label="Toggle theme">◐</button>
+    <button class="btn hot" id="snapBtn">＋ Save scenario</button>
+  </div>
+</header>
+
+<div class="ribbon">
+  <div class="q"><b id="qText">"If we push sales +20%, does the business hold?"</b><div style="font-size:13px;opacity:.8" id="qSub"></div></div>
+  <div class="verdict" id="verdict">—</div>
+</div>
+
+<div class="tape" id="tape"></div>
+
+<div class="bench">
+  <!-- CONTROL DECK -->
+  <aside class="panel" id="deck">
+    <h3>🎛 Control deck</h3>
+    <div class="sub">Drag the dial or use arrow keys. Levers are the decisions you can make.</div>
+    <div class="knob-box">
+      <svg id="knob" viewBox="0 0 200 200" tabindex="0" role="slider" aria-label="Sales growth target" aria-valuemin="0" aria-valuemax="50"></svg>
+      <div class="knob-hint">Sales growth target (0 – 50%)</div>
+    </div>
+    <div id="levers"></div>
+    <button class="btn" style="width:100%;margin-top:6px" id="resetBtn">↺ Reset to today</button>
+  </aside>
+
+  <!-- STAGE -->
+  <main class="stage">
+    <div class="kpis" id="kpis"></div>
+
+    <section class="panel">
+      <h3>🚦 Capacity pipeline</h3>
+      <div class="sub">Demand flows left to right. Each gate's height is its monthly capacity; the fill is the load. The narrowest gate caps what you can actually sell. Hover or tap a gate for detail.</div>
+      <div class="pipe-wrap"><svg id="pipe" viewBox="0 0 900 260"></svg></div>
+      <div class="pipe-legend">
+        <span><i class="dot" style="background:var(--leaf)"></i> under 85% load</span>
+        <span><i class="dot" style="background:var(--sun)"></i> 85–100% (stretched)</span>
+        <span><i class="dot" style="background:var(--bad)"></i> over capacity (bottleneck)</span>
+      </div>
+    </section>
+
+    <div class="two">
+      <section class="panel">
+        <h3>📈 12-month rollout</h3>
+        <div class="tabs" id="lineTabs">
+          <button class="on" data-v="units">Units</button>
+          <button data-v="profit">Profit</button>
+          <button data-v="fill">Fill rate</button>
+        </div>
+        <div class="chart-box"><canvas id="lineChart"></canvas></div>
+      </section>
+      <section class="panel">
+        <h3>🕸 Readiness radar</h3>
+        <div class="sub">Headroom per function (100 = exactly enough).</div>
+        <div class="chart-box"><canvas id="radarChart"></canvas></div>
+      </section>
+    </div>
+
+    <div class="two">
+      <section class="panel">
+        <h3>💸 Profit bridge (monthly, at full ramp)</h3>
+        <div class="sub">How today's profit turns into the scenario's profit. Click a bar to see the driver.</div>
+        <div class="chart-box"><canvas id="bridgeChart"></canvas></div>
+      </section>
+      <section class="panel">
+        <h3>🤖 AI advisor</h3>
+        <div class="sub">Rule-based read of the current scenario.</div>
+        <div class="advisor"><div class="bot">✦</div><div class="msgs" id="msgs"></div></div>
+        <button class="btn" style="margin-top:12px" id="fixBtn">⚡ Auto-balance levers</button>
+      </section>
+    </div>
+
+    <section class="panel">
+      <h3>🧪 Scenario comparison</h3>
+      <div class="sub">Save scenarios with the button at the top, then compare them here.</div>
+      <div class="chart-box" style="height:230px" id="cmpChartBox"><canvas id="cmpChart"></canvas></div>
+      <div class="tbl-wrap"><table id="cmpTbl"></table></div>
+    </section>
+  </main>
+</div>
+<footer>What-If Business Simulator · illustrative model of a mid-size manufacturer · all figures are simulated</footer>
+</div>
+
+<div id="tip"></div>
+<div class="modal" id="howModal"><div class="panel">
+  <h3>How the simulator works</h3>
+  <ol>
+    <li><b>Demand</b> = today's 10,000 units/month × (1 + growth target), adjusted by marketing lift and price elasticity.</li>
+    <li>Four gates each have a capacity: <b>Workforce</b> (people × output, + overtime), <b>Inventory</b> (supplier inflow + safety stock), <b>Production</b> (lines × shifts, + outsourcing), <b>Logistics</b> (trucks × loads, + 3PL).</li>
+    <li><b>Units sold</b> = the smallest of demand and every gate. That smallest gate is the bottleneck.</li>
+    <li>New hires ramp up over 3 months; demand ramps over the rollout months, so the 12-month chart shows the transition.</li>
+    <li><b>Profit</b> = revenue − variable cost − added labour, shifts, overtime, trucks, outsourcing premium and marketing.</li>
+  </ol>
+  <button class="btn" style="margin-top:12px" onclick="document.getElementById('howModal').classList.remove('show')">Got it</button>
+</div></div>
+
+<script>
+/* ---------- MODEL ---------- */
+const BASE={units:10000,price:50,varCost:30,emp:120,perEmp:88,salary:4200,lines:4,perLine:2900,
+  supply:11000,trucks:22,perTruck:520,fixed:95000};
+const DEF={growth:20,hires:0,overtime:0,supplyUp:0,safety:2,shifts:1,outsource:0,trucks:0,tpl:0,price:0,marketing:0,ramp:4};
+let S={...DEF};
+const LEVERS=[
+ {g:"People",c:"var(--berry)",items:[
+  {k:"hires",l:"New hires",min:0,max:60,step:1,f:v=>`+${v}`},
+  {k:"overtime",l:"Overtime",min:0,max:25,step:1,f:v=>`${v}%`}]},
+ {g:"Inventory",c:"var(--sun)",items:[
+  {k:"supplyUp",l:"Extra supplier volume",min:0,max:40,step:1,f:v=>`+${v}%`},
+  {k:"safety",l:"Safety stock",min:0,max:6,step:1,f:v=>`${v} wks`}]},
+ {g:"Production",c:"var(--teal)",items:[
+  {k:"shifts",l:"Shifts per day",seg:[1,2,3]},
+  {k:"outsource",l:"Outsource to partners",min:0,max:30,step:1,f:v=>`${v}%`}]},
+ {g:"Logistics",c:"var(--grape)",items:[
+  {k:"trucks",l:"Add trucks",min:0,max:15,step:1,f:v=>`+${v}`},
+  {k:"tpl",l:"3PL overflow",min:0,max:30,step:1,f:v=>`${v}%`}]},
+ {g:"Market",c:"var(--tang)",items:[
+  {k:"price",l:"Price change",min:-10,max:10,step:1,f:v=>`${v>0?'+':''}${v}%`},
+  {k:"marketing",l:"Marketing budget",min:0,max:80,step:5,f:v=>`$${v}k`},
+  {k:"ramp",l:"Rollout period",min:1,max:9,step:1,f:v=>`${v} mo`}]}
+];
+const STAGES=[
+ {k:"work",n:"Workforce",ic:"👷",c:"#d6246e"},
+ {k:"inv",n:"Inventory",ic:"📦",c:"#f7b32b"},
+ {k:"prod",n:"Production",ic:"🏭",c:"#0fa3a3"},
+ {k:"log",n:"Logistics",ic:"🚚",c:"#6a4cff"}];
+
+function sim(s,month=12){ // month: months since launch
+  const demandPhase=Math.min(1,month/s.ramp);
+  const hirePhase=Math.min(1,Math.max(0,(month-0.5)/3));
+  const elastic=1-1.4*(s.price/100);
+  const mktLift=1+0.06*Math.log1p(s.marketing/20);
+  const demand=BASE.units*(1+s.growth/100*demandPhase)*elastic*(s.marketing? (1+(mktLift-1)*demandPhase):1);
+  const shiftMul=[1,1.8,2.5][s.shifts-1];
+  const emp=BASE.emp+s.hires*hirePhase;
+  const cap={
+    work:emp*BASE.perEmp*(1+s.overtime/100)*(s.shifts>1?1+0.15*(s.shifts-1)*Math.min(1,s.hires/30):1),
+    inv:BASE.supply*(1+s.supplyUp/100)+(s.safety*BASE.units/4)/6,
+    prod:BASE.lines*BASE.perLine*shiftMul*(1+s.outsource/100),
+    log:(BASE.trucks+s.trucks)*BASE.perTruck*(1+s.tpl/100)
+  };
+  // workforce also bounded by needing people for shifts
+  if(s.shifts>1) cap.prod=Math.min(cap.prod,cap.prod); // kept for clarity
+  const sold=Math.min(demand,cap.work,cap.inv,cap.prod,cap.log);
+  const bottleneckK=Object.keys(cap).reduce((a,b)=>cap[a]<cap[b]?a:b);
+  const price=BASE.price*(1+s.price/100);
+  const rev=sold*price;
+  const vc=sold*BASE.varCost;
+  const costs={
+    labour:s.hires*hirePhase*BASE.salary+s.hires*(month<=3?600:0),
+    overtime:BASE.emp*BASE.salary*1.5*s.overtime/100,
+    shifts:(s.shifts-1)*62000,
+    outsource:Math.max(0,sold-Math.min(cap.work,BASE.lines*BASE.perLine*shiftMul))*0+(s.outsource/100)*BASE.lines*BASE.perLine*shiftMul*7*(sold/cap.prod),
+    trucks:s.trucks*5800,
+    tpl:(s.tpl/100)*(BASE.trucks+s.trucks)*BASE.perTruck*9*(sold/cap.log),
+    holding:s.safety*BASE.units/4*BASE.varCost*0.02,
+    supply:s.supplyUp/100*BASE.supply*1.2,
+    marketing:s.marketing*1000
+  };
+  const extra=Object.values(costs).reduce((a,b)=>a+b,0);
+  const profit=rev-vc-BASE.fixed-extra;
+  return {demand,cap,sold,bottleneckK,rev,vc,costs,extra,profit,fill:sold/demand,price,emp};
+}
+const today=sim({...DEF,growth:0,ramp:1});
+
+/* ---------- HELPERS ---------- */
+const $=id=>document.getElementById(id);
+const fmtN=n=>Math.round(n).toLocaleString();
+const fmt$=n=>(n<0?'−$':'$')+(Math.abs(n)>=1e6?(Math.abs(n)/1e6).toFixed(2)+'M':Math.round(Math.abs(n)/1000)+'k');
+const css=v=>getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+const loadColor=r=>r>1.0001?'#e23d3d':r>=.85?'#f7b32b':'#2bb673';
+
+/* ---------- PRESETS ---------- */
+const PRESETS=[
+ {n:"Status quo push",t:"Baseline",c:"#6c6680",d:"Ask for +20% with no changes. Where does it break?",s:{...DEF}},
+ {n:"Hire & double shift",t:"People-led",c:"#d6246e",d:"Add 30 people, run 2 shifts, more trucks.",s:{...DEF,hires:30,shifts:2,supplyUp:20,trucks:4,safety:3}},
+ {n:"Asset-light growth",t:"Outsource",c:"#0fa3a3",d:"Partners and 3PL absorb the surge; no new hires.",s:{...DEF,overtime:10,outsource:15,tpl:20,supplyUp:20,hires:6}},
+ {n:"Premium & focused",t:"Pricing",c:"#ff6b35",d:"Raise price 5%, market hard, grow +12%.",s:{...DEF,growth:12,price:5,marketing:40,hires:10,supplyUp:12,trucks:2}},
+ {n:"Moonshot +40%",t:"Aggressive",c:"#6a4cff",d:"Go big: 3 shifts, max supply, fleet expansion.",s:{...DEF,growth:40,hires:50,shifts:3,supplyUp:40,trucks:10,tpl:10,safety:4,marketing:30,ramp:6}},
+];
+function renderTape(){
+  $('tape').innerHTML=PRESETS.map((p,i)=>`<button class="preset" data-i="${i}"><span class="tag" style="background:${p.c}">${p.t}</span><h4>${p.n}</h4><p>${p.d}</p></button>`).join('');
+  $('tape').querySelectorAll('.preset').forEach(b=>b.onclick=()=>{S={...PRESETS[b.dataset.i].s};syncLevers();update();
+    $('tape').querySelectorAll('.preset').forEach(x=>x.classList.toggle('on',x===b));});
+}
+
+/* ---------- LEVERS ---------- */
+function renderLevers(){
+  $('levers').innerHTML=LEVERS.map(g=>`<div class="lever-group"><div class="gname"><i class="dot" style="background:${g.c}"></i>${g.g}</div>`+
+   g.items.map(it=>it.seg?`<div class="lever"><label>${it.l}</label><div class="seg" data-k="${it.k}">${it.seg.map(v=>`<button data-v="${v}">${v}</button>`).join('')}</div></div>`
+   :`<div class="lever"><label for="lv-${it.k}">${it.l}<span id="lvv-${it.k}"></span></label><input type="range" id="lv-${it.k}" data-k="${it.k}" min="${it.min}" max="${it.max}" step="${it.step}" style="--c:${g.c}"></div>`).join('')+`</div>`).join('');
+  document.querySelectorAll('#levers input').forEach(r=>r.oninput=()=>{S[r.dataset.k]=+r.value;clearPreset();update();});
+  document.querySelectorAll('#levers .seg').forEach(sg=>sg.querySelectorAll('button').forEach(b=>b.onclick=()=>{S[sg.dataset.k]=+b.dataset.v;clearPreset();update();}));
+  syncLevers();
+}
+function syncLevers(){
+  LEVERS.forEach(g=>g.items.forEach(it=>{
+    if(it.seg){document.querySelectorAll(`.seg[data-k="${it.k}"] button`).forEach(b=>b.classList.toggle('on',+b.dataset.v===S[it.k]));}
+    else{$('lv-'+it.k).value=S[it.k];$('lvv-'+it.k).textContent=it.f(S[it.k]);}
+  }));
+}
+function clearPreset(){$('tape').querySelectorAll('.preset').forEach(x=>x.classList.remove('on'));}
+
+/* ---------- KNOB ---------- */
+const knob=$('knob');const A0=-135,A1=135;
+function arcPath(r,a0,a1){const p=a=>[100+r*Math.sin(a*Math.PI/180),100-r*Math.cos(a*Math.PI/180)];
+  const [x0,y0]=p(a0),[x1,y1]=p(a1);return `M${x0} ${y0} A${r} ${r} 0 ${a1-a0>180?1:0} 1 ${x1} ${y1}`;}
+function drawKnob(){
+  const a=A0+(S.growth/50)*(A1-A0);
+  const ticks=[...Array(11)].map((_,i)=>{const t=A0+i*27,r1=86,r2=i%5?80:76,rad=t*Math.PI/180;
+    return `<line x1="${100+r1*Math.sin(rad)}" y1="${100-r1*Math.cos(rad)}" x2="${100+r2*Math.sin(rad)}" y2="${100-r2*Math.cos(rad)}" stroke="${css('--mute')}" stroke-width="2"/>`}).join('');
+  const rad=a*Math.PI/180;
+  knob.innerHTML=`<defs><linearGradient id="kg" x1="0" x2="1"><stop offset="0" stop-color="#2bb673"/><stop offset=".5" stop-color="#f7b32b"/><stop offset="1" stop-color="#d6246e"/></linearGradient></defs>
+  ${ticks}<path d="${arcPath(70,A0,A1)}" stroke="${css('--line')}" stroke-width="14" fill="none" stroke-linecap="round"/>
+  <path d="${arcPath(70,A0,Math.max(A0+0.1,a))}" stroke="url(#kg)" stroke-width="14" fill="none" stroke-linecap="round"/>
+  <circle cx="100" cy="100" r="50" fill="${css('--paper')}" stroke="${css('--ink')}" stroke-width="2"/>
+  <circle cx="${100+70*Math.sin(rad)}" cy="${100-70*Math.cos(rad)}" r="11" fill="${css('--card')}" stroke="${css('--ink')}" stroke-width="3"/>
+  <text x="100" y="104" text-anchor="middle" font-family="Fraunces" font-weight="800" font-size="30" fill="${css('--ink')}">+${S.growth}%</text>
+  <text x="100" y="124" text-anchor="middle" font-size="11" fill="${css('--mute')}">sales target</text>`;
+  knob.setAttribute('aria-valuenow',S.growth);
+}
+function knobFromEvent(e){const r=knob.getBoundingClientRect();const x=e.clientX-r.left-r.width/2,y=e.clientY-r.top-r.height/2;
+  let a=Math.atan2(x,-y)*180/Math.PI;a=Math.max(A0,Math.min(A1,a));S.growth=Math.round((a-A0)/(A1-A0)*50);clearPreset();update();}
+let drag=false;
+knob.addEventListener('pointerdown',e=>{drag=true;knob.setPointerCapture(e.pointerId);knobFromEvent(e)});
+knob.addEventListener('pointermove',e=>drag&&knobFromEvent(e));
+knob.addEventListener('pointerup',()=>drag=false);
+knob.addEventListener('keydown',e=>{if(['ArrowUp','ArrowRight'].includes(e.key))S.growth=Math.min(50,S.growth+1);
+  else if(['ArrowDown','ArrowLeft'].includes(e.key))S.growth=Math.max(0,S.growth-1);else return;e.preventDefault();clearPreset();update();});
+
+/* ---------- PIPELINE ---------- */
+const tip=$('tip');
+function drawPipe(r){
+  const maxCap=Math.max(r.demand,...Object.values(r.cap))*1.08;
+  const H=200,top=30,gx=[180,340,500,660],w=120;
+  const hOf=v=>v/maxCap*H;
+  let svg=`<defs><pattern id="hatch" width="8" height="8" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><line x1="0" y1="0" x2="0" y2="8" stroke="#e23d3d" stroke-width="4"/></pattern></defs>`;
+  // demand source
+  const dh=hOf(r.demand);
+  svg+=`<rect x="20" y="${top+H-dh}" width="110" height="${dh}" rx="10" fill="${css('--tang')}" stroke="${css('--ink')}" stroke-width="2"/>
+  <text x="75" y="${top+H-dh-8}" text-anchor="middle" font-weight="700" font-size="13" fill="${css('--ink')}">Demand</text>
+  <text x="75" y="${top+H-dh/2+5}" text-anchor="middle" font-family="JetBrains Mono" font-size="14" fill="#fff">${fmtN(r.demand)}</text>`;
+  svg+=`<line class="flowline" x1="130" y1="${top+H-10}" x2="860" y2="${top+H-10}" stroke="${css('--ink')}" stroke-width="3" opacity=".5"/>`;
+  STAGES.forEach((st,i)=>{
+    const c=r.cap[st.k],load=r.demand/c,ch=hOf(c),fill=Math.min(r.demand,c),fh=hOf(fill);
+    const x=gx[i],isB=st.k===r.bottleneckK&&load>1;
+    svg+=`<g class="pipe-stage" data-k="${st.k}">
+     <rect class="pbody" x="${x}" y="${top+H-ch}" width="${w}" height="${ch}" rx="10" fill="${css('--card')}" stroke="${css('--ink')}" stroke-width="2"/>
+     <rect x="${x+6}" y="${top+H-fh+ (fh>ch-6?6:0)}" width="${w-12}" height="${Math.max(0,fh-(fh>ch-6?12:6))}" rx="6" fill="${loadColor(load)}" opacity=".9"/>
+     ${load>1?`<rect class="alarm" x="${x}" y="${top+H-hOf(r.demand)}" width="${w}" height="${hOf(r.demand)-ch}" rx="6" fill="url(#hatch)" stroke="#e23d3d" stroke-dasharray="4 3"/>`:''}
+     <text x="${x+w/2}" y="${Math.min(top+H-ch,top+H-hOf(r.demand))-10}" text-anchor="middle" font-size="13" font-weight="700" fill="${css('--ink')}">${st.ic} ${st.n}</text>
+     <text x="${x+w/2}" y="${top+H-ch/2+5}" text-anchor="middle" font-family="JetBrains Mono" font-size="15" font-weight="700" fill="${css('--ink')}">${Math.round(load*100)}%</text>
+     ${isB?`<text x="${x+w/2}" y="${top+H+22}" text-anchor="middle" font-size="12" font-weight="700" fill="#e23d3d">▲ BOTTLENECK</text>`:`<text x="${x+w/2}" y="${top+H+22}" text-anchor="middle" font-size="12" fill="${css('--mute')}">cap ${fmtN(c)}</text>`}
+    </g>`;
+  });
+  svg+=`<text x="890" y="${top+H-20}" text-anchor="end" font-size="12" font-weight="700" fill="${css('--ink')}">→ ${fmtN(r.sold)} sold</text>`;
+  $('pipe').innerHTML=svg;
+  $('pipe').querySelectorAll('.pipe-stage').forEach(g=>{
+    const k=g.dataset.k,st=STAGES.find(s=>s.k===k),c=r.cap[k];
+    const show=e=>{tip.innerHTML=`<b>${st.ic} ${st.n}</b><br>Capacity: ${fmtN(c)} units/mo<br>Load: ${fmtN(r.demand)} (${Math.round(r.demand/c*100)}%)<br>${r.demand>c?`Short by <b>${fmtN(r.demand-c)}</b> units`:`Headroom: ${fmtN(c-r.demand)} units`}`;
+      tip.style.opacity=1;tip.style.left=Math.min(innerWidth-250,e.clientX+14)+'px';tip.style.top=(e.clientY+14)+'px';};
+    g.addEventListener('pointermove',show);g.addEventListener('pointerdown',show);g.addEventListener('pointerleave',()=>tip.style.opacity=0);
+  });
+}
+
+/* ---------- CHARTS ---------- */
+Chart.defaults.font.family="Space Grotesk";
+let lineChart,radarChart,bridgeChart,cmpChart,lineView='units';
+function chartColors(){return {ink:css('--ink'),mute:css('--mute'),line:css('--line')}}
+function baseOpts(){const c=chartColors();return{responsive:true,maintainAspectRatio:false,animation:{duration:350},
+  plugins:{legend:{labels:{color:c.ink,usePointStyle:true,boxWidth:8}},tooltip:{backgroundColor:c.ink,titleColor:css('--paper'),bodyColor:css('--paper'),padding:10,cornerRadius:10}},
+  scales:{x:{ticks:{color:c.mute},grid:{color:c.line}},y:{ticks:{color:c.mute},grid:{color:c.line}}}}}
+function months(){return [...Array(13)].map((_,i)=>i===0?'Now':'M'+i)}
+function series(){return [...Array(13)].map((_,m)=>sim(S,m))}
+function buildLine(){
+  const ser=series(),c=chartColors();let ds,yfmt;
+  if(lineView==='units'){
+    ds=[{label:'Demand',data:ser.map(r=>r.demand),borderColor:'#ff6b35',backgroundColor:'#ff6b3522',fill:false,tension:.35,borderWidth:3,pointRadius:3},
+        {label:'Units sold',data:ser.map(r=>r.sold),borderColor:'#0fa3a3',backgroundColor:'#0fa3a333',fill:true,tension:.35,borderWidth:3,pointRadius:3},
+        {label:'Bottleneck capacity',data:ser.map(r=>Math.min(...Object.values(r.cap))),borderColor:'#d6246e',borderDash:[6,5],borderWidth:2,pointRadius:0,fill:false}];
+    yfmt=v=>fmtN(v);
+  }else if(lineView==='profit'){
+    ds=[{label:'Monthly profit',data:ser.map(r=>r.profit),borderColor:'#6a4cff',backgroundColor:'#6a4cff33',fill:true,tension:.35,borderWidth:3,
+        segment:{borderColor:ctx=>ctx.p1.parsed.y<today.profit?'#e23d3d':'#6a4cff'}},
+        {label:'Today',data:ser.map(()=>today.profit),borderColor:c.mute,borderDash:[4,4],pointRadius:0,borderWidth:2}];
+    yfmt=v=>fmt$(v);
+  }else{
+    ds=[{label:'Fill rate',data:ser.map(r=>r.fill*100),borderColor:'#2bb673',backgroundColor:'#2bb67333',fill:true,tension:.35,borderWidth:3},
+        {label:'Target 98%',data:ser.map(()=>98),borderColor:'#f7b32b',borderDash:[4,4],pointRadius:0,borderWidth:2}];
+    yfmt=v=>v.toFixed(0)+'%';
+  }
+  const o=baseOpts();o.scales.y.ticks.callback=yfmt;o.plugins.tooltip.callbacks={label:x=>`${x.dataset.label}: ${yfmt(x.parsed.y)}`};
+  o.interaction={mode:'index',intersect:false};
+  if(lineView==='fill'){o.scales.y.min=Math.min(60,Math.floor(Math.min(...ser.map(r=>r.fill*100))/10)*10);o.scales.y.max=102}
+  if(!lineChart)lineChart=new Chart($('lineChart'),{type:'line',data:{labels:months(),datasets:ds},options:o});
+  else{lineChart.data.datasets=ds;lineChart.options=o;lineChart.update();}
+}
+function buildRadar(r){
+  const c=chartColors();
+  const val=k=>Math.min(160,r.cap[k]/r.demand*100);
+  const data={labels:STAGES.map(s=>s.n),datasets:[
+    {label:'Scenario headroom',data:STAGES.map(s=>val(s.k)),borderColor:'#d6246e',backgroundColor:'#d6246e33',borderWidth:3,pointBackgroundColor:STAGES.map(s=>loadColor(r.demand/r.cap[s.k])),pointRadius:6},
+    {label:'Required (100)',data:[100,100,100,100],borderColor:c.mute,borderDash:[4,4],backgroundColor:'transparent',pointRadius:0,borderWidth:2}]};
+  const o={responsive:true,maintainAspectRatio:false,animation:{duration:350},plugins:baseOpts().plugins,
+    scales:{r:{min:0,max:160,ticks:{display:false,stepSize:40},grid:{color:c.line},angleLines:{color:c.line},pointLabels:{color:c.ink,font:{size:13,weight:'700'}}}}};
+  o.plugins.tooltip.callbacks={label:x=>`${x.dataset.label}: ${x.parsed.r.toFixed(0)}`};
+  if(!radarChart)radarChart=new Chart($('radarChart'),{type:'radar',data,options:o});else{radarChart.data=data;radarChart.options=o;radarChart.update();}
+}
+let bridgeDrivers=[];
+function buildBridge(r){
+  const margin=(r.sold*r.price-r.sold*BASE.varCost)-(today.sold*today.price-today.sold*BASE.varCost);
+  const C=r.costs;
+  const steps=[["Today",today.profit,'total',"Current monthly profit with no changes."],
+   ["Added margin",margin,'d',`${fmtN(r.sold-today.sold)} extra units sold at ${fmt$(r.price-BASE.varCost).replace('k','')} margin, plus price effect.`],
+   ["People",-(C.labour+C.overtime),'d',`New hires (${S.hires}) and overtime (${S.overtime}%).`],
+   ["Shifts",-C.shifts,'d',`${S.shifts} shift(s): supervision, utilities, shift premium.`],
+   ["Supply & stock",-(C.supply+C.holding),'d',`Extra supplier volume and ${S.safety} weeks of safety stock carrying cost.`],
+   ["Outsourcing",-C.outsource,'d',`Partner production premium at ${S.outsource}% overflow.`],
+   ["Logistics",-(C.trucks+C.tpl),'d',`${S.trucks} added trucks and ${S.tpl}% 3PL overflow.`],
+   ["Marketing",-C.marketing,'d',`$${S.marketing}k monthly campaign spend.`],
+   ["Scenario",r.profit,'total',"Monthly profit once the plan is fully ramped."]];
+  bridgeDrivers=steps;let run=0;
+  const bars=steps.map(([n,v,t])=>{if(t==='total'){run=v;return [0,v]}const a=run;run+=v;return [a,run]});
+  const colors=steps.map(([n,v,t],i)=>t==='total'?(i===0?'#6c6680':(v>=today.profit?'#2bb673':'#e23d3d')):(v>=0?'#0fa3a3':'#ff6b35'));
+  const o=baseOpts();o.plugins.legend={display:false};o.scales.y.ticks.callback=v=>fmt$(v);
+  o.plugins.tooltip.callbacks={label:x=>{const s=steps[x.dataIndex];return s[2]==='total'?fmt$(s[1]):(s[1]>=0?'+':'')+fmt$(s[1])}};
+  o.onClick=(e,el)=>{if(!el.length)return;const s=steps[el[0].index];addMsg(`<span class="pill" style="background:#6a4cff">BRIDGE</span><b>${s[0]}:</b> ${s[3]}`,true)};
+  const data={labels:steps.map(s=>s[0]),datasets:[{data:bars,backgroundColor:colors,borderColor:chartColors().ink,borderWidth:2,borderRadius:6,borderSkipped:false}]};
+  if(!bridgeChart)bridgeChart=new Chart($('bridgeChart'),{type:'bar',data,options:o});else{bridgeChart.data=data;bridgeChart.options=o;bridgeChart.update();}
+}
+
+/* ---------- KPIs + VERDICT ---------- */
+function renderKpis(r){
+  const d=(a,b,f,inv)=>{const x=a-b,good=inv?x<=0:x>=0;return `<span class="d ${Math.abs(x)<1e-6?'':good?'up':'down'}">${x>=0?'▲':'▼'} ${f(Math.abs(x))} vs today</span>`};
+  const realised=(r.sold/today.sold-1)*100;
+  $('kpis').innerHTML=[
+   ['Growth achieved',`${realised>=0?'+':''}${realised.toFixed(1)}%`,`<span class="d">target +${S.growth}%</span>`,'#ff6b35'],
+   ['Fill rate',`${(r.fill*100).toFixed(1)}%`,`<span class="d ${r.fill>=.98?'up':'down'}">${fmtN(r.demand-r.sold)} units unmet</span>`,'#0fa3a3'],
+   ['Monthly profit',fmt$(r.profit),d(r.profit,today.profit,fmt$),'#6a4cff'],
+   ['Margin',`${(r.profit/r.rev*100).toFixed(1)}%`,d(r.profit/r.rev*100,today.profit/today.rev*100,v=>v.toFixed(1)+' pts'),'#d6246e']
+  ].map(([l,v,dd,k])=>`<div class="kpi" style="--k:${k}"><div class="l">${l}</div><div class="v">${v}</div>${dd}</div>`).join('');
+  let txt,bg;
+  if(r.fill>=.98&&r.profit>=today.profit){txt='✅ Business holds';bg='#2bb673'}
+  else if(r.fill>=.98){txt='⚠️ Holds, but profit drops';bg='#f7b32b'}
+  else if(r.fill>=.9){txt='⚠️ Stretched — '+STAGES.find(s=>s.k===r.bottleneckK).n+' limits';bg='#ff6b35'}
+  else{txt='⛔ Breaks at '+STAGES.find(s=>s.k===r.bottleneckK).n;bg='#e23d3d'}
+  $('verdict').textContent=txt;$('verdict').style.background=bg;$('verdict').style.color=bg==='#f7b32b'?'#1d1a2f':'#fff';
+  $('qText').textContent=`"If we push sales +${S.growth}%, does the business hold?"`;
+  $('qSub').textContent=`Demand ${fmtN(r.demand)} units/mo · capacity at the bottleneck ${fmtN(r.cap[r.bottleneckK])} · ${S.ramp}-month rollout`;
+  $('hdrPct').textContent=`+${S.growth}%`;
+}
+
+/* ---------- ADVISOR ---------- */
+function addMsg(h,prepend){const m=document.createElement('div');m.className='msg';m.innerHTML=h;
+  prepend?$('msgs').prepend(m):$('msgs').appendChild(m);while($('msgs').children.length>5)$('msgs').lastChild.remove();}
+function advise(r){
+  $('msgs').innerHTML='';
+  const shorts=STAGES.filter(s=>r.cap[s.k]<r.demand).sort((a,b)=>r.cap[a.k]-r.cap[b.k]);
+  if(!shorts.length) addMsg(`<span class="pill" style="background:#2bb673">OK</span>All four functions can absorb <b>${fmtN(r.demand)}</b> units/month. Tightest is <b>${STAGES.find(s=>s.k===r.bottleneckK).n}</b> at ${Math.round(r.demand/r.cap[r.bottleneckK]*100)}% load.`);
+  const tipFor={work:g=>`hire about <b>${Math.ceil(g/(BASE.perEmp))}</b> people, or add ${Math.min(25,Math.ceil(g/(BASE.emp*BASE.perEmp)*100))}% overtime as a bridge`,
+    inv:g=>`raise supplier volume by about <b>${Math.ceil(g/BASE.supply*100)}%</b>`,
+    prod:g=>S.shifts<3?`add a <b>${S.shifts+1}${S.shifts===1?'nd':'rd'} shift</b> or outsource ~${Math.ceil(g/(BASE.lines*BASE.perLine*[1,1.8,2.5][S.shifts-1])*100)}%`:`outsource ~${Math.ceil(g/(BASE.lines*BASE.perLine*2.5)*100)}% more`,
+    log:g=>`add <b>${Math.ceil(g/BASE.perTruck)}</b> trucks, or route ~${Math.ceil(g/((BASE.trucks+S.trucks)*BASE.perTruck)*100)}% to a 3PL`};
+  shorts.forEach((s,i)=>{const gap=r.demand-r.cap[s.k];
+    addMsg(`<span class="pill" style="background:${i?'#ff6b35':'#e23d3d'}">${i?'NEXT':'FIX FIRST'}</span><b>${s.n}</b> is short by ${fmtN(gap)} units/mo. To close it, ${tipFor[s.k](gap)}.`)});
+  const idle=STAGES.filter(s=>r.cap[s.k]>r.demand*1.3);
+  if(idle.length) addMsg(`<span class="pill" style="background:#f7b32b;color:#1d1a2f">WASTE</span><b>${idle.map(s=>s.n).join(', ')}</b> ${idle.length>1?'have':'has'} 30%+ spare capacity. You may be paying for more than you need.`);
+  if(r.profit<today.profit) addMsg(`<span class="pill" style="background:#6a4cff">PROFIT</span>This plan earns <b>${fmt$(today.profit-r.profit)}</b> less per month than today. Check the profit bridge for the costliest lever.`);
+  else addMsg(`<span class="pill" style="background:#6a4cff">PROFIT</span>Once ramped, profit rises by <b>${fmt$(r.profit-today.profit)}</b>/month (${fmt$((r.profit-today.profit)*12)} a year).`);
+}
+function autoBalance(){
+  // greedy: fix the bottleneck with its cheapest lever until fill >= 99% or nothing left
+  for(let i=0;i<200;i++){const r=sim(S);if(r.fill>=.9999)break;const k=r.bottleneckK;
+    if(k==='work'){if(S.hires<60)S.hires++;else if(S.overtime<25)S.overtime++;else break;}
+    else if(k==='inv'){if(S.supplyUp<40)S.supplyUp++;else if(S.safety<6)S.safety++;else break;}
+    else if(k==='prod'){if(S.outsource<10)S.outsource++;else if(S.shifts<3){S.shifts++;S.outsource=0;}else if(S.outsource<30)S.outsource++;else break;}
+    else if(k==='log'){if(S.trucks<15)S.trucks++;else if(S.tpl<30)S.tpl++;else break;}}
+  // trim waste: drop extra hires/trucks while still filling
+  ['trucks','hires','supplyUp'].forEach(k=>{while(S[k]>0){S[k]--;if(sim(S).fill<.9999){S[k]++;break;}}});
+  clearPreset();syncLevers();update();
+  addMsg(`<span class="pill" style="background:#0fa3a3">AUTO</span>I adjusted the levers to the lowest settings that meet demand. Fine-tune from here.`,true);
+}
+
+/* ---------- COMPARE ---------- */
+let snaps=[];const SNAPC=['#ff6b35','#0fa3a3','#6a4cff','#d6246e','#2bb673','#f7b32b'];
+function snap(){const r=sim(S);const name=prompt?null:null;
+  const label=`#${snaps.length+1} · +${S.growth}%`+(document.querySelector('.preset.on h4')?' '+document.querySelector('.preset.on h4').textContent:'');
+  snaps.push({label,s:{...S},r});if(snaps.length>6)snaps.shift();renderCmp();
+  $('cmpTbl').scrollIntoView({behavior:'smooth',block:'center'});}
+function renderCmp(){
+  if(!snaps.length){$('cmpTbl').innerHTML='<tr><td class="empty">No scenarios saved yet. Set up a scenario and press “＋ Save scenario”.</td></tr>';$('cmpChartBox').style.display='none';return}
+  $('cmpChartBox').style.display='';
+  $('cmpTbl').innerHTML=`<tr><th>Scenario</th><th>Target</th><th>Achieved</th><th>Fill</th><th>Bottleneck</th><th>Profit/mo</th><th>Δ vs today</th><th></th></tr>`+
+   snaps.map((x,i)=>`<tr><td><i class="dot" style="background:${SNAPC[i]}"></i> ${x.label}</td><td>+${x.s.growth}%</td><td>${((x.r.sold/today.sold-1)*100).toFixed(1)}%</td><td>${(x.r.fill*100).toFixed(1)}%</td><td>${STAGES.find(s=>s.k===x.r.bottleneckK).n}</td><td>${fmt$(x.r.profit)}</td><td class="${x.r.profit>=today.profit?'up':'down'}">${x.r.profit>=today.profit?'+':''}${fmt$(x.r.profit-today.profit)}</td><td><button class="x" data-load="${i}" title="Load">↩</button><button class="x" data-del="${i}" title="Remove">✕</button></td></tr>`).join('');
+  $('cmpTbl').querySelectorAll('[data-del]').forEach(b=>b.onclick=()=>{snaps.splice(+b.dataset.del,1);renderCmp()});
+  $('cmpTbl').querySelectorAll('[data-load]').forEach(b=>b.onclick=()=>{S={...snaps[+b.dataset.load].s};clearPreset();syncLevers();update();scrollTo({top:0,behavior:'smooth'})});
+  const metrics=['Growth %','Fill %','Profit Δ ($k)','Margin %'];
+  const ds=snaps.map((x,i)=>({label:x.label,backgroundColor:SNAPC[i],borderColor:chartColors().ink,borderWidth:2,borderRadius:6,
+    data:[(x.r.sold/today.sold-1)*100,x.r.fill*100,(x.r.profit-today.profit)/1000,x.r.profit/x.r.rev*100]}));
+  const o=baseOpts();o.plugins.tooltip.callbacks={label:t=>`${t.dataset.label}: ${t.parsed.y.toFixed(1)}`};
+  if(!cmpChart)cmpChart=new Chart($('cmpChart'),{type:'bar',data:{labels:metrics,datasets:ds},options:o});
+  else{cmpChart.data.datasets=ds;cmpChart.options=o;cmpChart.update();}
+}
+
+/* ---------- MAIN ---------- */
+function update(){syncLevers();drawKnob();const r=sim(S);renderKpis(r);drawPipe(r);buildLine();buildRadar(r);buildBridge(r);advise(r);}
+$('lineTabs').querySelectorAll('button').forEach(b=>b.onclick=()=>{lineView=b.dataset.v;$('lineTabs').querySelectorAll('button').forEach(x=>x.classList.toggle('on',x===b));buildLine()});
+$('resetBtn').onclick=()=>{S={...DEF};clearPreset();update()};
+$('fixBtn').onclick=autoBalance;
+$('snapBtn').onclick=snap;
+$('howBtn').onclick=()=>$('howModal').classList.add('show');
+$('howModal').onclick=e=>{if(e.target.id==='howModal')e.target.classList.remove('show')};
+$('themeBtn').onclick=()=>{const root=document.documentElement;const dark=root.dataset.theme?root.dataset.theme==='dark':matchMedia('(prefers-color-scheme:dark)').matches;
+  root.dataset.theme=dark?'light':'dark';[lineChart,radarChart,bridgeChart,cmpChart].forEach(c=>c&&c.destroy());lineChart=radarChart=bridgeChart=cmpChart=null;update();renderCmp();};
+renderTape();renderLevers();renderCmp();update();
+$('tape').querySelector('.preset').classList.add('on');
+</script>
+</body>
+</html>
